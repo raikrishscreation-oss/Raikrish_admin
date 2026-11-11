@@ -98,8 +98,27 @@ textarea{resize:vertical;min-height:60px}
 .sheet .qr b{display:block;margin-top:7px;font-size:13px;color:var(--green);letter-spacing:.6px}
 .sheet .contact{flex:1;line-height:1.85}
 .sheet .contact .thx{font-family:'Playfair Display',serif;font-size:20px;color:var(--green);margin-bottom:5px}
-.sheet .contact i{width:22px;color:var(--gold)}
+.sheet .contact i{display:inline-block;width:26px;margin-right:6px;text-align:center;color:var(--gold)}
 .sheet .contact .small{font-size:10.5px;color:var(--muted);line-height:1.5;margin-top:7px;border-top:1px dashed #d8cdb0;padding-top:6px}
+
+.sheet .contact .ph{white-space:nowrap}
+.sheet .contact .ph span{display:inline-block;margin-right:30px}
+.sheet .contact .ph span:last-child{margin-right:0}
+.sheet .contact i.fa-whatsapp{color:#25D366}
+
+/* customer suggestions */
+.sugwrap{position:relative}
+.sug{display:none;position:absolute;left:0;right:0;top:100%;margin-top:3px;background:#fff;border:1px solid var(--gold);border-radius:10px;box-shadow:0 8px 22px rgba(0,0,0,.18);z-index:60;max-height:260px;overflow-y:auto}
+.sug .si{padding:9px 12px;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center;border-bottom:1px solid var(--line)}
+.sug .si:last-child{border-bottom:0}
+.sug .si:hover,.sug .si.on{background:var(--cream)}
+.sug .si b{font-weight:600;color:var(--green);font-size:13px}
+.sug .si span{color:var(--muted);font-size:12px;white-space:nowrap}
+.sug .si small{display:block;color:var(--muted);font-size:11px;font-weight:400}
+
+/* toast */
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translate(-50%,20px);max-width:min(92vw,420px);background:var(--green);color:#fff;border:1px solid var(--gold);padding:11px 16px;border-radius:12px;font-size:13.5px;font-weight:500;box-shadow:0 8px 24px rgba(0,0,0,.28);opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:1000;text-align:center;word-break:break-word}
+.toast.show{opacity:1;transform:translate(-50%,0)}
 
 @media (max-width:760px){
   .items-head{display:none}
@@ -132,8 +151,8 @@ textarea{resize:vertical;min-height:60px}
   <div class="card no-print">
     <h2><i class="fa-solid fa-user"></i> Customer details</h2>
     <div class="grid">
-      <div><label>Customer name <b>*</b></label><input id="cName" placeholder="Full name"></div>
-      <div><label>Phone no <b>*</b></label><input id="cPhone" inputmode="tel" placeholder="Mobile number"></div>
+      <div class="sugwrap"><label>Customer name <b>*</b></label><input id="cName" placeholder="Type name to search saved customers" autocomplete="off"><div class="sug" id="sugName"></div></div>
+      <div class="sugwrap"><label>Phone no <b>*</b></label><input id="cPhone" inputmode="tel" placeholder="Mobile number" autocomplete="off"><div class="sug" id="sugPhone"></div></div>
       <div><label>Email</label><input id="cEmail" type="email" placeholder="Optional"></div>
       <div><label>Invoice no (auto)</label>
         <div style="display:flex;gap:6px;align-items:center">
@@ -183,6 +202,7 @@ textarea{resize:vertical;min-height:60px}
   </div>
 
   <datalist id="plist"></datalist>
+  <div id="toast" class="toast no-print" role="status" aria-live="polite"></div>
 
   <div class="card no-print">
     <h2><i class="fa-solid fa-list"></i> Product list <span id="pcount" style="font-size:13px;color:var(--muted);font-family:Poppins"></span></h2>
@@ -203,7 +223,7 @@ textarea{resize:vertical;min-height:60px}
 <script>
 /* ================= CONFIG ================= */
 // 1) Paste your deployed Apps Script Web App URL here (ends with /exec)
-const API_URL = 'https://script.google.com/macros/s/AKfycbzBzIJphF9_M7ZG1mkxzIhlFYNuDsEDp7DPDHGWxvJbGF5_6Uo0TZpsPiQ5eerENOU/exec';
+const API_URL = 'https://script.google.com/macros/s/AKfycbwL2tVq_O5m3NM7FCa7Mm4MIGrHzUOAlqxk4w89ksxfoZPw7wdMF44onkkzl3E9ozk/exec';
 
 // 2) Fallback for reading products if API_URL is empty (sheet must be "Anyone with link – Viewer")
 const SHEET_ID = '1sFavnKzitQdsUkrV2keQw9Ge2JV9Sg8Wn-XqukL1tq4';
@@ -215,7 +235,7 @@ const LOGO_URL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAUAAAAFACAYAAADN
 const QR_URL = 'https://lh3.googleusercontent.com/d/1Y_dq3AeA-oDM3iZZnesPvkUtRibWXJPq';
 
 const SITE = 'raikrishcolection.arnetworkhouse.in';
-const PHONE = '7602268369', INSTA = 'raikrishs_collection', MAIL = 'raikrishscreation@gmail.com';
+const PHONE = '7602268369', WA = '7602868408', INSTA = 'raikrishs_collection', MAIL = 'raikrishscreation@gmail.com';
 
 /* ================= HELPERS ================= */
 const $ = id => document.getElementById(id);
@@ -225,6 +245,11 @@ const num = v => { if (typeof v === 'number') return v; const n = parseFloat(Str
 const lsGet = (k, d) => { try { const v = localStorage.getItem(k); return v === null ? d : v; } catch (e) { return d; } };
 const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
 const blank = () => ({ pid: '', name: '', desc: '', qty: 1, rate: 0, cost: 0, text: '' });
+let toastTimer;
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+}
 function say(msg, cls) { const s = $('status'); s.className = 'status ' + (cls || ''); s.textContent = msg; }
 
 let products = [], items = [blank()], invDate = new Date();
@@ -245,16 +270,66 @@ const lastLocal = () => parseInt(lsGet('rkc_serial_' + yy(), '0'), 10) || 0;
 function invNo() { const s = parseInt($('serial').value, 10) || 1; return 'RKC' + yy() + String(s).padStart(3, '0'); }
 async function refreshSerial() {
   $('invPrefix').textContent = 'RKC' + yy();
-  let next = lastLocal() + 1;
+  let next = lastLocal() + 1, fromServer = false;
   if (API_URL) {
     try {
       const r = await (await fetch(`${API_URL}?action=nextserial&yy=${yy()}&_=${Date.now()}`)).json();
-      if (r.ok) next = Math.max(next, r.nextSerial);
+      // sheet is the truth: use its number exactly (local memory is only a fallback)
+      if (r && r.ok && Number.isInteger(r.nextSerial) && r.nextSerial > 0) { next = r.nextSerial; fromServer = true; }
     } catch (e) {}
+    if (!fromServer) toast('Invoice no: could not read sheet. Redeploy Apps Script as NEW version.');
   }
   $('serial').value = next; renderDoc();
 }
 function markUsed() { const s = parseInt($('serial').value, 10) || 1; if (s > lastLocal()) lsSet('rkc_serial_' + yy(), String(s)); }
+
+/* ================= CUSTOMERS (suggestions from CRM sheet) ================= */
+let customers = [];
+try { customers = JSON.parse(lsGet('rkc_customers', '[]')); } catch (e) { customers = []; }
+const digitsOf = v => String(v || '').replace(/\D/g, '');
+async function loadCustomers() {
+  if (!API_URL) return;
+  try {
+    const r = await (await fetch(`${API_URL}?action=customers&_=${Date.now()}`)).json();
+    if (r && r.ok && Array.isArray(r.customers)) { customers = r.customers; lsSet('rkc_customers', JSON.stringify(customers)); }
+  } catch (e) {}
+}
+function showSug(box, q) {
+  q = q.trim();
+  const ql = q.toLowerCase(), qd = digitsOf(q);
+  if (!q) { box.style.display = 'none'; return; }
+  const list = customers.filter(c =>
+    String(c.name || '').toLowerCase().includes(ql) || (qd && digitsOf(c.phone).includes(qd))
+  ).sort((a, b) => {
+    const as = String(a.name || '').toLowerCase().startsWith(ql) || digitsOf(a.phone).startsWith(qd) ? 0 : 1;
+    const bs = String(b.name || '').toLowerCase().startsWith(ql) || digitsOf(b.phone).startsWith(qd) ? 0 : 1;
+    return as - bs;
+  }).slice(0, 6);
+  box._list = list;
+  if (!list.length) { box.style.display = 'none'; return; }
+  box.innerHTML = list.map((c, i) => `<div class="si" data-i="${i}"><div><b>${esc(c.name || '—')}</b>${c.address ? `<small>${esc(String(c.address).slice(0, 40))}</small>` : ''}</div><span>${esc(c.phone || '')}</span></div>`).join('');
+  box.style.display = 'block';
+}
+function pickCustomer(c) {
+  $('cName').value = c.name || ''; $('cPhone').value = c.phone || '';
+  $('cEmail').value = c.email || ''; $('cAddr').value = c.address || '';
+  ['sugName', 'sugPhone'].forEach(id => $(id).style.display = 'none');
+  renderDoc(); toast('Customer filled: ' + (c.name || c.phone));
+}
+[['cName', 'sugName'], ['cPhone', 'sugPhone']].forEach(([inp, sug]) => {
+  const input = $(inp), box = $(sug);
+  input.addEventListener('input', () => showSug(box, input.value));
+  input.addEventListener('focus', () => { if (input.value.trim()) showSug(box, input.value); });
+  input.addEventListener('keydown', e => { if (e.key === 'Escape') box.style.display = 'none'; });
+  box.addEventListener('pointerdown', e => {
+    const el = e.target.closest('.si'); if (!el) return;
+    e.preventDefault();
+    const c = box._list && box._list[+el.dataset.i]; if (c) pickCustomer(c);
+  });
+});
+document.addEventListener('pointerdown', e => {
+  if (!e.target.closest('.sugwrap')) ['sugName', 'sugPhone'].forEach(id => $(id).style.display = 'none');
+});
 
 /* ================= PRODUCTS ================= */
 function parseGviz(text) {
@@ -315,6 +390,7 @@ function findProduct(val) {
 
 /* ================= ITEMS ================= */
 function addItem(p) {
+  if (p) toast(`${p.type || p.id} added × 1`);
   items.push(p ? { pid: p.id, name: p.type || p.id, desc: p.desc, qty: 1, rate: p.sell, cost: p.cost, text: keyOf(p) } : blank());
   renderRows(); renderDoc();
 }
@@ -331,9 +407,11 @@ function renderRows() {
     </div>`).join('');
 }
 function fillItem(it, p, row) {
+  const isNew = it.pid !== p.id;
   it.pid = p.id; it.name = p.type || p.id; it.desc = p.desc; it.rate = p.sell; it.cost = p.cost; it.text = keyOf(p);
   row.querySelector('.f-rate').value = p.sell; row.querySelector('.f-cost').value = p.cost;
   row.querySelector('.mini').textContent = 'Cost auto-filled (editable)';
+  if (isNew) toast(`${it.name} added × ${it.qty}`);
 }
 $('rows').addEventListener('input', e => {
   const row = e.target.closest('.item-row'); if (!row) return;
@@ -425,7 +503,7 @@ function docHTML() {
       <div class="qr"><div class="q">${qrSrc ? `<img src="${qrSrc}" alt="QR">` : `<span style="font-size:11px;color:#a89f86;line-height:1.5;padding:8px">QR code<br>image here</span>`}</div><b>Scan &amp; Pay</b></div>
       <div class="contact">
         <div class="thx">Thank you for supporting handmade!</div>
-        <div><i class="fa-brands fa-whatsapp"></i>${PHONE} (Call / WhatsApp)</div>
+        <div class="ph"><span><i class="fa-solid fa-phone"></i>${PHONE}</span><span><i class="fa-brands fa-whatsapp"></i>${WA}</span></div>
         <div><i class="fa-brands fa-instagram"></i>${INSTA}</div>
         <div><i class="fa-solid fa-envelope"></i>${MAIL}</div>
         <div><i class="fa-solid fa-globe"></i>${SITE}</div>
@@ -449,13 +527,14 @@ window.addEventListener('resize', fit);
 ['cName', 'cPhone', 'cEmail', 'cAddr', 'delivery', 'discount', 'orderId', 'serial'].forEach(id => $(id).addEventListener('input', renderDoc));
 
 /* ================= SAVE TO SHEET ================= */
+let savedNo = '';   // invoice no already saved in this session (re-save = update, not new row)
 async function saveInvoice() {
   if (!API_URL) return { ok: false, error: 'API_URL is not set in the HTML file' };
   const payload = {
     invoiceNo: invNo(), dateText: fmtDate(invDate), iso: invDate.toISOString(),
     name: $('cName').value.trim(), phone: $('cPhone').value.trim(), email: $('cEmail').value.trim(), address: $('cAddr').value.trim(),
     delivery: Math.max(0, num($('delivery').value)),
-    orderId: $('orderId').value.trim(), discountPct: totals().pct,
+    orderId: $('orderId').value.trim(), discountPct: totals().pct, update: savedNo === invNo(),
     items: validItems().map(i => ({ pid: i.pid, name: i.pid ? i.name : i.text, desc: i.desc, qty: i.qty, rate: i.rate, cost: i.cost }))
   };
   try {
@@ -473,7 +552,12 @@ async function saveFlow(stampNow) {
   if (stampNow) { invDate = new Date(); renderDoc(); }
   say('Saving to sheet…');
   const r = await saveInvoice();
-  if (r.ok) { markUsed(); say(`Saved ${r.invoiceNo} to Google Sheet ✔`, 'ok'); return true; }
+  if (r.ok) {
+    const m = String(r.invoiceNo || '').match(/(\d+)$/);
+    if (r.renumbered && m) { $('serial').value = parseInt(m[1], 10); renderDoc(); toast('Invoice no changed to ' + r.invoiceNo + ' (old one was already used)'); }
+    savedNo = invNo(); markUsed(); loadCustomers();
+    say(`Saved ${r.invoiceNo} to Google Sheet ✔`, 'ok'); return true;
+  }
   say('Sheet save failed: ' + (r.error || 'unknown error'), 'err');
   return confirm('Invoice could not be saved to the sheet (' + (r.error || 'error') + ').\nContinue anyway?');
 }
@@ -509,16 +593,16 @@ $('btnPdf').onclick = async () => {
   } catch (e) { say('PDF failed: ' + e.message, 'err'); }
   finally { holder.remove(); }
 };
-$('btnSync').onclick = () => { syncProducts(); refreshSerial(); };
+$('btnSync').onclick = () => { syncProducts(); refreshSerial(); loadCustomers(); };
 $('btnNew').onclick = () => {
   if (!confirm('Start a new invoice? Current details will be cleared.')) return;
   ['cName', 'cPhone', 'cEmail', 'cAddr', 'delivery', 'discount', 'orderId'].forEach(id => $(id).value = '');
-  items = [blank()]; invDate = new Date(); renderRows(); refreshSerial();
+  items = [blank()]; invDate = new Date(); savedNo = ''; renderRows(); refreshSerial(); loadCustomers();
 };
 
 /* ================= INIT ================= */
 try { products = JSON.parse(lsGet('rkc_products', '[]')); } catch (e) { products = []; }
-buildLists(); renderRows(); renderDoc(); refreshSerial(); syncProducts();
+buildLists(); renderRows(); renderDoc(); refreshSerial(); syncProducts(); loadCustomers();
 if (!API_URL) say('API_URL is empty – invoices will NOT be saved to the sheet until you paste the Apps Script URL in the file.', 'err');
 </script>
 </body>
